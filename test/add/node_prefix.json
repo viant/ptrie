@@ -1,0 +1,35 @@
+{
+  "Nodes": [
+    {
+      "Nodes": [
+        {
+          "Prefix": [
+            100
+          ],
+          "Type": 2,
+          "ValueIndex": 3
+        }
+      ],
+      "Prefix": [
+        97,
+        98,
+        99
+      ],
+      "Type": 6,
+      "ValueIndex": 1
+    },
+    {
+      "Prefix": [
+        122,
+        121,
+        120
+      ],
+      "Type": 2,
+      "ValueIndex": 2
+    }
+  ],
+  "Prefix": [
+    47
+  ],
+  "Type": 6
+}
