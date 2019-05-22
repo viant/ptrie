@@ -3,7 +3,7 @@ package ptrie
 //Bytes represents byte slice
 type Bytes []byte
 
-//LastSharedIndex computes the last prefix shared indexed, TODO optimize
+//LastSharedIndex computes the last prefix shared indexed
 func (b Bytes) LastSharedIndex(bs []byte) int {
 	upperBound := len(bs)
 	if upperBound >= len(b) {

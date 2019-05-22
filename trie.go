@@ -11,7 +11,7 @@ import (
 //Merger
 type Merger func(previous, next interface{}) (merged interface{})
 
-//OnMatch represents matching input handler, return value instruct trie to continue search
+//onMatch represents matching input handler, return value instruct trie to continue search
 type OnMatch func(key []byte, value interface{}) bool
 
 //Visitor represents value node visitor handler
@@ -37,6 +37,8 @@ type Trie interface {
 	Decode(reader io.Reader) error
 
 	Encode(writer io.Writer) error
+
+	ValueCount() int
 }
 
 type trie struct {
@@ -153,6 +155,11 @@ func (t *trie) encodeValues(writer io.Writer, err *error, waitGroup *sync.WaitGr
 	if e := t.values.Encode(writer); e != nil {
 		*err = e
 	}
+}
+
+
+func (t *trie)  ValueCount() int {
+	return len(t.values.data)
 }
 
 func (t *trie) Encode(writer io.Writer) error {
