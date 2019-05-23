@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"io/ioutil"
 	"reflect"
 	"sync"
 )
@@ -125,6 +126,7 @@ func (t *trie) decodeTrie(reader io.Reader, err *error, waitGroup *sync.WaitGrou
 	}
 }
 
+
 func (t *trie) Decode(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(2)
@@ -138,7 +140,11 @@ func (t *trie) Decode(reader io.Reader) error {
 		return err
 	}
 	go t.decodeValues(bytes.NewReader(data), &err, waitGroup)
-	go t.decodeTrie(reader, &err, waitGroup)
+	trieData, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	go t.decodeTrie(bytes.NewReader(trieData), &err, waitGroup)
 	waitGroup.Wait()
 	return err
 }

@@ -3,6 +3,7 @@ package ptrie
 import (
 	"bytes"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -292,4 +293,18 @@ func trieToMap(trie Trie) map[string]interface{} {
 		return true
 	})
 	return result
+}
+
+
+func Test_Trie_Decode(t *testing.T) {
+	trie := New()
+	trie.UseType(reflect.TypeOf(""))
+	reader, err := os.Open("/Users/awitas/Downloads/index_appBroad.idx")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	err = trie.Decode(reader)
+	assert.Nil(t, err)
 }
