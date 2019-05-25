@@ -9,9 +9,9 @@ import (
 	"sync"
 )
 
-//Hasher represents value hasher
-type Hasher interface {
-	Hash() int
+//KeyProvider represents entity key provider
+type KeyProvider interface {
+	Key() interface{}
 }
 
 //Decoder decoder
@@ -39,19 +39,19 @@ func (v *values) useType(Type reflect.Type) {
 
 func (v *values) put(value interface{}) (uint32, error) {
 	v.RLock()
-	hashedValue := value
+	key := value
 	switch val := value.(type) {
 	case []byte:
-		hashedValue = string(val)
+		key = string(val)
 	case int, string, bool, uint8, uint16, uint32, uint64, int8, int16, int32, int64, float32, float64:
 	default:
-		hasher, ok := value.(Hasher)
+		keyProvider, ok := value.(KeyProvider)
 		if !ok {
 			return 0, fmt.Errorf("unhashable type %T, consifer implementing Hash() int", value)
 		}
-		hashedValue = hasher.Hash()
+		key = keyProvider.Key()
 	}
-	result, ok := v.registry[hashedValue]
+	result, ok := v.registry[key]
 	v.RUnlock()
 	if ok {
 		return result, nil
@@ -62,7 +62,7 @@ func (v *values) put(value interface{}) (uint32, error) {
 		v.useType(reflect.TypeOf(value))
 	}
 	result = uint32(len(v.registry))
-	v.registry[hashedValue] = result
+	v.registry[key] = result
 	v.data = append(v.data, value)
 	return result, nil
 }
