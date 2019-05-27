@@ -33,9 +33,6 @@ type Trie interface {
 	//MatchPrefix matches input prefix, ie. input: dev.domain.com, would match with trie keys like: dev, dev.domain
 	MatchPrefix(input []byte, handler OnMatch) bool
 
-	//MatchSuffix matches input suffix, ie. input: dev.domain.com, would match with trie keys like: domain.com, .com
-	MatchSuffix(input []byte, handler OnMatch) bool
-
 	//MatchAll matches input  with any occurencrs of tries keys.
 	MatchAll(input []byte, handler OnMatch) bool
 
@@ -45,10 +42,6 @@ type Trie interface {
 
 	Encode(writer io.Writer) error
 
-	//BuildReverse flag to control to build reverse trie for suffix matches, if do not need that, set this flag to false
-	//It is enabled by default
-	BuildReverse(enable bool)
-
 	ValueCount() int
 }
 
@@ -56,7 +49,6 @@ type trie struct {
 	buildReverse bool
 	values       *values
 	root         *Node
-	reversedRoot *Node
 }
 
 func (t *trie) BuildReverse(enable bool) {
@@ -77,13 +69,7 @@ func reverseKey(key []byte) []byte {
 }
 
 func (t *trie) Merge(key []byte, value interface{}, merger Merger) error {
-	err := t.merge(t.root, key, value, merger)
-	if err == nil {
-		if t.buildReverse {
-			err = t.merge(t.reversedRoot, reverseKey(key), value, merger)
-		}
-	}
-	return err
+	return t.merge(t.root, key, value, merger)
 }
 
 func (t *trie) merge(root *Node, key []byte, value interface{}, merger Merger) error {
@@ -136,15 +122,6 @@ func (t *trie) MatchPrefix(input []byte, handler OnMatch) bool {
 	return t.match(t.root, input, handler)
 }
 
-func (t *trie) MatchSuffix(input []byte, handler OnMatch) bool {
-	return t.match(t.reversedRoot, reverseKey(input), func(key []byte, value interface{}) bool {
-		if handler == nil {
-			return true
-		}
-		return handler(reverseKey(key), value)
-	})
-}
-
 func (t *trie) Walk(handler Visitor) {
 	t.root.walk([]byte{}, func(key []byte, valueIndex uint32) {
 		value := t.values.value(valueIndex)
@@ -172,7 +149,7 @@ func (t *trie) decodeTrie(root *Node, reader io.Reader, err *error, waitGroup *s
 
 func (t *trie) Decode(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
-	waitGroup.Add(3)
+	waitGroup.Add(2)
 	valuesLength := uint64(0)
 	err := binary.Read(reader, binary.BigEndian, &valuesLength)
 	if err != nil {
@@ -183,15 +160,6 @@ func (t *trie) Decode(reader io.Reader) error {
 		return err
 	}
 	go t.decodeValues(bytes.NewReader(data), &err, waitGroup)
-	reverseTrieLength := uint64(0)
-	if err = binary.Read(reader, binary.BigEndian, &reverseTrieLength); err != nil {
-		return err
-	}
-	reverseTrieData := make([]byte, reverseTrieLength)
-	if err = binary.Read(reader, binary.BigEndian, reverseTrieData); err != nil {
-		return err
-	}
-	go t.decodeTrie(t.reversedRoot, bytes.NewReader(reverseTrieData), &err, waitGroup)
 	trieData, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
@@ -221,13 +189,11 @@ func (t *trie) ValueCount() int {
 
 func (t *trie) Encode(writer io.Writer) error {
 	trieBuffer := new(bytes.Buffer)
-	reverseTrieBuffer := new(bytes.Buffer)
 
 	valueBuffer := new(bytes.Buffer)
 	waitGroup := &sync.WaitGroup{}
-	waitGroup.Add(3)
+	waitGroup.Add(2)
 	var err error
-	go t.encodeTrie(t.reversedRoot, reverseTrieBuffer, &err, waitGroup)
 	go t.encodeTrie(t.root, trieBuffer, &err, waitGroup)
 	go t.encodeValues(valueBuffer, &err, waitGroup)
 	waitGroup.Wait()
@@ -236,11 +202,7 @@ func (t *trie) Encode(writer io.Writer) error {
 	}
 	if err = binary.Write(writer, binary.BigEndian, uint64(valueBuffer.Len())); err == nil {
 		if err = binary.Write(writer, binary.BigEndian, valueBuffer.Bytes()); err == nil {
-			if err = binary.Write(writer, binary.BigEndian, uint64(reverseTrieBuffer.Len())); err == nil {
-				if err = binary.Write(writer, binary.BigEndian, reverseTrieBuffer.Bytes()); err == nil {
-					err = binary.Write(writer, binary.BigEndian, trieBuffer.Bytes())
-				}
-			}
+			err = binary.Write(writer, binary.BigEndian, trieBuffer.Bytes())
 		}
 	}
 	return err
@@ -274,9 +236,7 @@ func (t *trie) match(root *Node, input []byte, handler OnMatch) bool {
 //New create new prefix trie
 func New() Trie {
 	return &trie{
-		buildReverse: true,
 		values:       newValues(),
 		root:         newValueNode([]byte{}, 0),
-		reversedRoot: newValueNode([]byte{}, 0),
 	}
 }
