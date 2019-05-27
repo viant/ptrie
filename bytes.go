@@ -19,3 +19,7 @@ func (b Bytes) LastSharedIndex(bs []byte) int {
 	}
 	return result
 }
+
+func (a Bytes) Len() int           { return len(a) }
+func (a Bytes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a Bytes) Less(i, j int) bool { return a[i] < a[j] }

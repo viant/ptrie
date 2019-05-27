@@ -18,7 +18,7 @@ type Node struct {
 	Type       uint8
 	Prefix     []byte
 	ValueIndex uint32
-	*Nodes
+	Nodes
 }
 
 type merger func(prev uint32) uint32
@@ -33,13 +33,11 @@ func (n *Node) isEdgeType() bool {
 
 func (n *Node) makeEdge() {
 	n.Type = n.Type | NodeTypeEdge
-	nodes := Nodes{}
-	n.Nodes = &nodes
 }
 
 func (n *Node) add(node *Node, merger merger) {
-	if n.Nodes == nil {
-		n.Nodes = &Nodes{}
+	if len(n.Nodes) == 0 {
+		n.Nodes = make([]*Node, 0)
 		n.makeEdge()
 	}
 	n.Nodes.add(node, merger)
@@ -53,7 +51,7 @@ func (n *Node) walk(parent []byte, handler func(key []byte, valueIndex uint32)) 
 	if !n.isEdgeType() {
 		return
 	}
-	for _, node := range *n.Nodes {
+	for _, node := range n.Nodes {
 		node.walk(prefix, handler)
 	}
 }
@@ -65,7 +63,7 @@ func (n *Node) matchNodes(input []byte, offset int, handler func(key []byte, val
 		if index == -1 {
 			return hasMatch
 		}
-		if (*n.Nodes)[index].match(input, offset, handler) {
+		if (n.Nodes)[index].match(input, offset, handler) {
 			hasMatch = true
 		}
 	}
@@ -128,9 +126,9 @@ func (n *Node) encodeNodes(writer io.Writer) error {
 	if !n.isEdgeType() {
 		return err
 	}
-	if err = binary.Write(writer, binary.LittleEndian, uint32(len(*n.Nodes))); err == nil {
-		for i := range *n.Nodes {
-			if err = (*n.Nodes)[i].Encode(writer); err != nil {
+	if err = binary.Write(writer, binary.LittleEndian, uint32(len(n.Nodes))); err == nil {
+		for i := range n.Nodes {
+			if err = (n.Nodes)[i].Encode(writer); err != nil {
 				return err
 			}
 		}
@@ -172,11 +170,10 @@ func (n *Node) decodeNodes(reader io.Reader) error {
 	}
 	nodeLength := uint32(0)
 	if err = binary.Read(reader, binary.LittleEndian, &nodeLength); err == nil {
-		var nodes Nodes = make([]*Node, nodeLength)
-		n.Nodes = &nodes
-		for i := range *n.Nodes {
+		n.Nodes = make([]*Node, nodeLength)
+		for i := range n.Nodes {
 			node := &Node{}
-			(*n.Nodes)[i] = node
+			(n.Nodes)[i] = node
 			if err = node.Decode(reader); err != nil {
 				return err
 			}

@@ -26,7 +26,7 @@ func (n *Nodes) add(node *Node, merger merger) {
 				if !node.isEdgeType() {
 					node.makeEdge()
 				}
-				*node.Nodes = append(*(node.Nodes), (*sharedNode.Nodes)...)
+				node.Nodes = append(node.Nodes, sharedNode.Nodes...)
 			}
 			(*n)[index] = node
 			return
@@ -46,7 +46,7 @@ func (n *Nodes) add(node *Node, merger merger) {
 			return
 		}
 
-		edge := &Node{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: &Nodes{}}
+		edge := &Node{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: Nodes{}}
 		edge.add(sharedNode, nil)
 		node.Prefix = node.Prefix[sharedPrefixIndex+1:]
 		edge.add(node, nil)

@@ -3,7 +3,6 @@ package ptrie
 import (
 	"bytes"
 	"github.com/stretchr/testify/assert"
-	"os"
 	"reflect"
 	"testing"
 )
@@ -64,7 +63,7 @@ func TestTrie_Get(t *testing.T) {
 		useCase := useCases[i]
 		trie := New()
 		for k, v := range useCase.keywords {
-			trie.Put([]byte(k), v)
+			_ = trie.Put([]byte(k), v)
 		}
 		value, ok := trie.Get([]byte(useCase.key))
 		expectedValue, epxectKey := useCase.keywords[useCase.key]
@@ -77,7 +76,7 @@ func TestTrie_Get(t *testing.T) {
 
 }
 
-func TestTrie_Match(t *testing.T) {
+func TestTrie_MatchPrefix(t *testing.T) {
 	useCases := []struct {
 		description     string
 		keywords        map[string]interface{}
@@ -138,14 +137,105 @@ func TestTrie_Match(t *testing.T) {
 		useCase := useCases[i]
 		trie := New()
 		for k, v := range useCase.keywords {
-			trie.Put([]byte(k), v)
+			_ = trie.Put([]byte(k), v)
 		}
 		actualMatch := map[string]interface{}{}
 		onMatch := func(key []byte, value interface{}) bool {
 			actualMatch[string(key)] = value
 			return useCase.testMultiMatch
 		}
-		hasMatch := trie.Match([]byte(useCase.input), onMatch)
+		hasMatch := trie.MatchPrefix([]byte(useCase.input), onMatch)
+		assert.Equal(t, len(useCase.matchedKeywords) > 0, hasMatch, useCase.description)
+		if len(useCase.matchedKeywords) > 0 {
+			assert.Equal(t, useCase.matchedKeywords, actualMatch, useCase.description)
+		}
+	}
+}
+
+func TestTrie_MatchSuffix(t *testing.T) {
+	useCases := []struct {
+		description     string
+		keywords        map[string]interface{}
+		matchedKeywords map[string]interface{}
+		testMultiMatch  bool
+		input           string
+	}{
+		{
+			description: "exact match",
+			keywords: map[string]interface{}{
+				"abcdef":   1,
+				"abcdefgh": 2,
+				"abc":      3,
+				"bar":      4,
+				"foo":      5,
+				"a":        5,
+			},
+			testMultiMatch: true,
+			matchedKeywords: map[string]interface{}{
+				"abc": 3,
+			},
+			input: "abc",
+		},
+
+		{
+			description: "single match",
+			keywords: map[string]interface{}{
+				"abcdef":   1,
+				"abcdefgh": 2,
+				"abc":      3,
+				"bar":      4,
+				"foo":      5,
+				"a":        5,
+			},
+			testMultiMatch: false,
+			matchedKeywords: map[string]interface{}{
+				"abc": 3,
+			},
+			input: "abc",
+		},
+		{
+			description: "no match",
+			keywords: map[string]interface{}{
+				"abcdef":   1,
+				"abcdefgh": 2,
+				"abc":      3,
+				"bar":      4,
+				"foo":      5,
+				"a":        5,
+			},
+			testMultiMatch: false,
+			input:          "zero",
+		},
+		{
+			description: "prefix match",
+			keywords: map[string]interface{}{
+				"zulily.com": 1,
+				"abcdefgh":   2,
+				"abc":        3,
+				"bar":        4,
+				"foo":        5,
+				"a":          5,
+			},
+			testMultiMatch: true,
+			input:          "http://zulily.com",
+			matchedKeywords: map[string]interface{}{
+				"zulily.com": 1,
+			},
+		},
+	}
+
+	for i := range useCases {
+		useCase := useCases[i]
+		trie := New()
+		for k, v := range useCase.keywords {
+			_ = trie.Put([]byte(k), v)
+		}
+		actualMatch := map[string]interface{}{}
+		onMatch := func(key []byte, value interface{}) bool {
+			actualMatch[string(key)] = value
+			return useCase.testMultiMatch
+		}
+		hasMatch := trie.MatchSuffix([]byte(useCase.input), onMatch)
 
 		assert.Equal(t, len(useCase.matchedKeywords) > 0, hasMatch, useCase.description)
 		if len(useCase.matchedKeywords) > 0 {
@@ -293,18 +383,4 @@ func trieToMap(trie Trie) map[string]interface{} {
 		return true
 	})
 	return result
-}
-
-
-func Test_Trie_Decode(t *testing.T) {
-	trie := New()
-	trie.UseType(reflect.TypeOf(""))
-	reader, err := os.Open("/Users/awitas/Downloads/index_appBroad.idx")
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-
-	err = trie.Decode(reader)
-	assert.Nil(t, err)
 }
