@@ -150,59 +150,46 @@ func (t *trie) decodeTrie(root *Node, reader io.Reader, err *error, waitGroup *s
 func (t *trie) Decode(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(2)
-	valuesLength := uint64(0)
-	err := binary.Read(reader, binary.BigEndian, &valuesLength)
+	trieLength := uint64(0)
+
+	err := binary.Read(reader, binary.LittleEndian, &trieLength)
 	if err != nil {
 		return err
 	}
-	data := make([]byte, valuesLength)
-	if err = binary.Read(reader, binary.BigEndian, data); err != nil {
+	data := make([]byte, trieLength)
+	if err = binary.Read(reader, binary.LittleEndian, data); err != nil {
 		return err
 	}
-	go t.decodeValues(bytes.NewReader(data), &err, waitGroup)
-	trieData, err := ioutil.ReadAll(reader)
+	go t.decodeTrie(t.root, bytes.NewReader(data), &err, waitGroup)
+
+	dataReader, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
 	}
-	go t.decodeTrie(t.root, bytes.NewReader(trieData), &err, waitGroup)
+	go t.decodeValues(bytes.NewReader(dataReader), &err, waitGroup)
 	waitGroup.Wait()
 	return err
 }
 
-func (t *trie) encodeTrie(root *Node, writer io.Writer, err *error, waitGroup *sync.WaitGroup) {
-	defer waitGroup.Done()
-	if e := root.Encode(writer); e != nil {
-		*err = e
-	}
+func (t *trie) encodeTrie(root *Node, writer io.Writer) error {
+	return root.Encode(writer)
 }
 
-func (t *trie) encodeValues(writer io.Writer, err *error, waitGroup *sync.WaitGroup) {
-	defer waitGroup.Done()
-	if e := t.values.Encode(writer); e != nil {
-		*err = e
-	}
+func (t *trie) encodeValues(writer io.Writer) error {
+	return  t.values.Encode(writer)
 }
 
 func (t *trie) ValueCount() int {
 	return len(t.values.data)
 }
 
-func (t *trie) Encode(writer io.Writer) error {
-	trieBuffer := new(bytes.Buffer)
 
-	valueBuffer := new(bytes.Buffer)
-	waitGroup := &sync.WaitGroup{}
-	waitGroup.Add(2)
-	var err error
-	go t.encodeTrie(t.root, trieBuffer, &err, waitGroup)
-	go t.encodeValues(valueBuffer, &err, waitGroup)
-	waitGroup.Wait()
-	if err != nil {
-		return err
-	}
-	if err = binary.Write(writer, binary.BigEndian, uint64(valueBuffer.Len())); err == nil {
-		if err = binary.Write(writer, binary.BigEndian, valueBuffer.Bytes()); err == nil {
-			err = binary.Write(writer, binary.BigEndian, trieBuffer.Bytes())
+func (t *trie) Encode(writer io.Writer) error {
+	trieSize := t.root.size()
+	err := binary.Write(writer, binary.LittleEndian, uint64(trieSize))
+	if err == nil {
+		if err = t.encodeTrie(t.root, writer);err == nil {
+			err = t.encodeValues(writer)
 		}
 	}
 	return err

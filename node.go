@@ -121,6 +121,23 @@ func (n *Node) Encode(writer io.Writer) error {
 	return err
 }
 
+
+
+func (n *Node) size() int {
+	result := 2 + 4 +  len(n.Prefix)
+	if n.isValueType() {
+		result += 4
+	}
+	if n.isEdgeType() {
+		result += 4
+		for _, node := range n.Nodes {
+			result += node.size()
+		}
+	}
+	return result
+}
+
+
 func (n *Node) encodeNodes(writer io.Writer) error {
 	var err error
 	if !n.isEdgeType() {

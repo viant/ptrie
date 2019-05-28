@@ -40,6 +40,8 @@ func TestNode_Decode(t *testing.T) {
 			log.Print(err)
 			continue
 		}
+		assert.EqualValues(t, writer.Len(), node.size(), useCase.description)
+
 		cloned := &Node{}
 		err = cloned.Decode(bytes.NewReader(writer.Bytes()))
 		if assert.Nil(t, err, useCase.description) {
