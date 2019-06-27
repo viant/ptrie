@@ -191,7 +191,8 @@ func (t *trie) MatchAll(input []byte, handler OnMatch) bool {
 	toContinue := true
 	matched := false
 	for i := 0; i < len(input); i++ {
-		if !t.bset.IsSet(input[i]) {
+
+		if t.bset > 0 && !t.bset.IsSet(input[i]) {
 			continue
 		}
 		if hasMatched := t.match(t.root, input[i:], func(key []byte, value interface{}) bool {

@@ -143,8 +143,7 @@ func (n *Node) encodeNodes(writer io.Writer) error {
 	if !n.isEdgeType() {
 		return err
 	}
-	var bset uint64
-	if err = binary.Write(writer, binary.LittleEndian, &bset); err == nil {
+	if err = binary.Write(writer, binary.LittleEndian, uint64(n.bset)); err == nil {
 		if err = binary.Write(writer, binary.LittleEndian, uint32(len(n.Nodes))); err == nil {
 			for i := range n.Nodes {
 				if err = (n.Nodes)[i].Encode(writer); err != nil {
@@ -153,7 +152,7 @@ func (n *Node) encodeNodes(writer io.Writer) error {
 			}
 		}
 	}
-	n.bset = Bit64Set(bset)
+
 	return err
 }
 
@@ -190,7 +189,10 @@ func (n *Node) decodeNodes(reader io.Reader) error {
 		return err
 	}
 	nodeLength := uint32(0)
-	if err = binary.Read(reader, binary.LittleEndian, uint64(n.bset)); err == nil {
+	bset := uint64(0)
+
+	if err = binary.Read(reader, binary.LittleEndian, &bset); err == nil {
+		n.bset = Bit64Set(bset)
 		if err = binary.Read(reader, binary.LittleEndian, &nodeLength); err == nil {
 			n.Nodes = make([]*Node, nodeLength)
 			for i := range n.Nodes {
