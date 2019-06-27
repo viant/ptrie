@@ -1,4 +1,4 @@
-## June 27 2016 0.1.0
+## June 27 2016 0.1.1
 
     * Added missing bset encoding and decoding
 
