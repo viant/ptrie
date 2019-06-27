@@ -15,8 +15,8 @@ Please refer to [`CHANGELOG.md`](CHANGELOG.md) if you encounter breaking changes
 
 ## Motivation
 
-The goal of this project is to provide serverless prefix trie friendly implementation.
- where one function can easily building trie and publishing to some cloud storge.
+The goal of this project is to provide serverless prefix tree friendly implementation.
+ where one function can easily building tree and publishing to some cloud storge.
 Then the second load trie to perform various operations.
 
 ## Introduction
