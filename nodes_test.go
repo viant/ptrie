@@ -157,3 +157,33 @@ func TestNodes_IndexOf(t *testing.T) {
 	}
 
 }
+
+func BenchmarkNodes_IndexOf(b *testing.B) {
+	nodes := Nodes{}
+	for i := 32; i < 98; i += 3 {
+		//fmt.Printf("%v\n", i)
+		nodes.add(&Node{Prefix: []byte{byte(i)}}, func(prev uint32) uint32 {
+			return 0
+		})
+	}
+
+	for i := 0; i < b.N; i++ {
+		if nodes.IndexOf(byte(33)) != -1 {
+			b.FailNow()
+		}
+		if nodes.IndexOf(byte(66)) != -1 {
+			b.FailNow()
+		}
+		if nodes.IndexOf(byte(96)) != -1 {
+			b.FailNow()
+		}
+
+		if nodes.IndexOf(byte(65)) != 11 {
+			b.FailNow()
+		}
+		if nodes.IndexOf(byte(32)) != 0 {
+			b.FailNow()
+		}
+	}
+
+}

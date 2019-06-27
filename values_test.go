@@ -89,13 +89,13 @@ type foo struct {
 
 type bar foo
 
-func (c *bar) Hash() int {
+func (c *bar) Key() interface{} {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(c.Name))
 	return c.ID + 100000*int(h.Sum32())
 }
 
-func (c *foo) Hash() int {
+func (c *foo) Key() interface{} {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(c.Name))
 	return c.ID + 100000*int(h.Sum32())
