@@ -19,6 +19,7 @@ type Node struct {
 	Prefix     []byte
 	ValueIndex uint32
 	Nodes
+	bset Bit64Set
 }
 
 type merger func(prev uint32) uint32
@@ -40,6 +41,7 @@ func (n *Node) add(node *Node, merger merger) {
 		n.Nodes = make([]*Node, 0)
 		n.makeEdge()
 	}
+	n.bset = n.bset.Put(node.Prefix[0])
 	n.Nodes.add(node, merger)
 }
 
@@ -59,9 +61,12 @@ func (n *Node) walk(parent []byte, handler func(key []byte, valueIndex uint32)) 
 func (n *Node) matchNodes(input []byte, offset int, handler func(key []byte, valueIndex uint32) bool) bool {
 	hasMatch := false
 	if n.isEdgeType() {
+		if !n.bset.IsSet(input[offset]) {
+			return false
+		}
 		index := n.Nodes.IndexOf(input[offset])
 		if index == -1 {
-			return hasMatch
+			return false
 		}
 		if (n.Nodes)[index].match(input, offset, handler) {
 			hasMatch = true
@@ -74,7 +79,6 @@ func (n *Node) match(input []byte, offset int, handler func(key []byte, valueInd
 	if offset >= len(input) {
 		return false
 	}
-
 	if len(n.Prefix) == 0 {
 		return n.matchNodes(input, offset, handler)
 	}
@@ -92,7 +96,6 @@ func (n *Node) match(input []byte, offset int, handler func(key []byte, valueInd
 	if offset >= len(input) {
 		return hasMatch
 	}
-
 	if n.isEdgeType() {
 		if n.matchNodes(input, offset, handler) {
 			return true
@@ -121,15 +124,13 @@ func (n *Node) Encode(writer io.Writer) error {
 	return err
 }
 
-
-
 func (n *Node) size() int {
-	result := 2 + 4 +  len(n.Prefix)
+	result := 2 + 4 + len(n.Prefix)
 	if n.isValueType() {
 		result += 4
 	}
 	if n.isEdgeType() {
-		result += 4
+		result += 12
 		for _, node := range n.Nodes {
 			result += node.size()
 		}
@@ -137,19 +138,22 @@ func (n *Node) size() int {
 	return result
 }
 
-
 func (n *Node) encodeNodes(writer io.Writer) error {
 	var err error
 	if !n.isEdgeType() {
 		return err
 	}
-	if err = binary.Write(writer, binary.LittleEndian, uint32(len(n.Nodes))); err == nil {
-		for i := range n.Nodes {
-			if err = (n.Nodes)[i].Encode(writer); err != nil {
-				return err
+	var bset uint64
+	if err = binary.Write(writer, binary.LittleEndian, &bset); err == nil {
+		if err = binary.Write(writer, binary.LittleEndian, uint32(len(n.Nodes))); err == nil {
+			for i := range n.Nodes {
+				if err = (n.Nodes)[i].Encode(writer); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	n.bset = Bit64Set(bset)
 	return err
 }
 
@@ -186,13 +190,15 @@ func (n *Node) decodeNodes(reader io.Reader) error {
 		return err
 	}
 	nodeLength := uint32(0)
-	if err = binary.Read(reader, binary.LittleEndian, &nodeLength); err == nil {
-		n.Nodes = make([]*Node, nodeLength)
-		for i := range n.Nodes {
-			node := &Node{}
-			(n.Nodes)[i] = node
-			if err = node.Decode(reader); err != nil {
-				return err
+	if err = binary.Read(reader, binary.LittleEndian, uint64(n.bset)); err == nil {
+		if err = binary.Read(reader, binary.LittleEndian, &nodeLength); err == nil {
+			n.Nodes = make([]*Node, nodeLength)
+			for i := range n.Nodes {
+				node := &Node{}
+				n.Nodes[i] = node
+				if err = node.Decode(reader); err != nil {
+					return err
+				}
 			}
 		}
 	}

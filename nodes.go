@@ -58,18 +58,20 @@ func (n *Nodes) add(node *Node, merger merger) {
 func (n Nodes) IndexOf(b byte) int {
 	lowerBoundIndex := 0
 	upperBoundIndex := len(n) - 1
-	for lowerBoundIndex <= upperBoundIndex {
+loop:
+	if lowerBoundIndex <= upperBoundIndex {
 		mediumIndex := (lowerBoundIndex + upperBoundIndex) / 2
-		if n[mediumIndex].Prefix[0] < b {
+		candidate := n[mediumIndex].Prefix[0]
+		if candidate < b {
 			lowerBoundIndex = mediumIndex + 1
-		} else {
+		} else if candidate > b {
 			upperBoundIndex = mediumIndex - 1
+		} else {
+			return mediumIndex
 		}
+		goto loop
 	}
-	if lowerBoundIndex == len(n) || n[lowerBoundIndex].Prefix[0] != b {
-		return -1
-	}
-	return lowerBoundIndex
+	return -1
 }
 
 func (a Nodes) Len() int           { return len(a) }

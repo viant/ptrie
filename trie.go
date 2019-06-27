@@ -33,7 +33,7 @@ type Trie interface {
 	//MatchPrefix matches input prefix, ie. input: dev.domain.com, would match with trie keys like: dev, dev.domain
 	MatchPrefix(input []byte, handler OnMatch) bool
 
-	//MatchAll matches input  with any occurencrs of tries keys.
+	//MatchAll matches input with any occurrences of tries keys.
 	MatchAll(input []byte, handler OnMatch) bool
 
 	UseType(vType reflect.Type)
@@ -49,6 +49,7 @@ type trie struct {
 	buildReverse bool
 	values       *values
 	root         *Node
+	bset         Bit64Set
 }
 
 func (t *trie) BuildReverse(enable bool) {
@@ -73,6 +74,7 @@ func (t *trie) Merge(key []byte, value interface{}, merger Merger) error {
 }
 
 func (t *trie) merge(root *Node, key []byte, value interface{}, merger Merger) error {
+	t.bset = t.bset.Put(key[0])
 	index, err := t.values.put(value)
 	if err != nil {
 		return err
@@ -176,19 +178,18 @@ func (t *trie) encodeTrie(root *Node, writer io.Writer) error {
 }
 
 func (t *trie) encodeValues(writer io.Writer) error {
-	return  t.values.Encode(writer)
+	return t.values.Encode(writer)
 }
 
 func (t *trie) ValueCount() int {
 	return len(t.values.data)
 }
 
-
 func (t *trie) Encode(writer io.Writer) error {
 	trieSize := t.root.size()
 	err := binary.Write(writer, binary.LittleEndian, uint64(trieSize))
 	if err == nil {
-		if err = t.encodeTrie(t.root, writer);err == nil {
+		if err = t.encodeTrie(t.root, writer); err == nil {
 			err = t.encodeValues(writer)
 		}
 	}
@@ -199,7 +200,9 @@ func (t *trie) MatchAll(input []byte, handler OnMatch) bool {
 	toContinue := true
 	matched := false
 	for i := 0; i < len(input); i++ {
-
+		if !t.bset.IsSet(input[i]) {
+			continue
+		}
 		if hasMatched := t.match(t.root, input[i:], func(key []byte, value interface{}) bool {
 			toContinue = handler(key, value)
 			return toContinue
@@ -223,7 +226,7 @@ func (t *trie) match(root *Node, input []byte, handler OnMatch) bool {
 //New create new prefix trie
 func New() Trie {
 	return &trie{
-		values:       newValues(),
-		root:         newValueNode([]byte{}, 0),
+		values: newValues(),
+		root:   newValueNode([]byte{}, 0),
 	}
 }
