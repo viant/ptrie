@@ -1,4 +1,4 @@
-# Trie (trie)
+# Trie (Prefix tree)
 
 [![GoReportCard](https://goreportcard.com/badge/github.com/viant/ptrie)](https://goreportcard.com/report/github.com/viant/ptrie)
 [![GoDoc](https://godoc.org/github.com/viant/ptrie?status.svg)](https://godoc.org/github.com/viant/ptrie)
