@@ -46,27 +46,14 @@ type Trie interface {
 }
 
 type trie struct {
-	buildReverse bool
 	values       *values
 	root         *Node
 	bset         Bit64Set
 }
 
-func (t *trie) BuildReverse(enable bool) {
-	t.buildReverse = enable
-}
 
 func (t *trie) Put(key []byte, value interface{}) error {
 	return t.Merge(key, value, nil)
-}
-
-func reverseKey(key []byte) []byte {
-	reverseKey := make([]byte, len(key))
-	for i := 0; i < len(reverseKey)/2+1; i++ {
-		j := len(reverseKey) - i - 1
-		reverseKey[i], reverseKey[j] = key[j], key[i]
-	}
-	return reverseKey
 }
 
 func (t *trie) Merge(key []byte, value interface{}, merger Merger) error {
