@@ -46,11 +46,10 @@ type Trie interface {
 }
 
 type trie struct {
-	values       *values
-	root         *Node
-	bset         Bit64Set
+	values *values
+	root   *Node
+	bset   Bit64Set
 }
-
 
 func (t *trie) Put(key []byte, value interface{}) error {
 	return t.Merge(key, value, nil)
@@ -140,10 +139,13 @@ func (t *trie) Decode(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(2)
 	trieLength := uint64(0)
-
-	err := binary.Read(reader, binary.LittleEndian, &trieLength)
-	if err != nil {
-		return err
+	bset := uint64(0)
+	err := binary.Read(reader, binary.LittleEndian, &bset)
+	if err == nil {
+		t.bset = Bit64Set(bset)
+		if err = binary.Read(reader, binary.LittleEndian, &trieLength); err != nil {
+			return err
+		}
 	}
 	data := make([]byte, trieLength)
 	if err = binary.Read(reader, binary.LittleEndian, data); err != nil {
@@ -174,10 +176,12 @@ func (t *trie) ValueCount() int {
 
 func (t *trie) Encode(writer io.Writer) error {
 	trieSize := t.root.size()
-	err := binary.Write(writer, binary.LittleEndian, uint64(trieSize))
+	err := binary.Write(writer, binary.LittleEndian, uint64(t.bset))
 	if err == nil {
-		if err = t.encodeTrie(t.root, writer); err == nil {
-			err = t.encodeValues(writer)
+		if err = binary.Write(writer, binary.LittleEndian, uint64(trieSize)); err == nil {
+			if err = t.encodeTrie(t.root, writer); err == nil {
+				err = t.encodeValues(writer)
+			}
 		}
 	}
 	return err
