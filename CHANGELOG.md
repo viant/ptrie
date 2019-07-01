@@ -1,4 +1,4 @@
-## July 1 2019 0.1.2
+## July 1 2019 0.2.0
 
     * Updated node merging too account for bset optimization
 
