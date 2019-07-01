@@ -117,6 +117,10 @@ func TestNode_match(t *testing.T) {
 				"bc": uint32(7),
 			},
 		},
+
+
+
+
 		{
 			description:      "exact match",
 			keywords:         []string{"abc", "zyx", "mln", "abcd", "abcdex"},
@@ -172,12 +176,51 @@ func TestNode_match(t *testing.T) {
 				"abcd": uint32(8),
 			},
 		},
+
+		{
+			description:      "mult level amtch",
+			keywords:         []string{"ab", "abc", "abcd", "a"},
+			input:            "abcd",
+			expectHasMatched: true,
+			matchAll:         true,
+			expectMatched: map[string]uint32{
+				"abc":  uint32(2),
+				"ab":   uint32(1),
+				"abcd": uint32(3),
+				"a":    uint32(4),
+			},
+		},
+		{
+			description:      "mult level amtch",
+			keywords:         []string{"petest.com.br",
+				"petest.com¬†",
+				"petest.com,¬†",
+				"petest.com",
+				".com",
+				"pe",
+				"petest",
+				"e",
+				"r",
+				"pe",
+				"hilton.com"},
+			input:            "petest.com",
+			expectHasMatched: true,
+			matchAll:         true,
+			expectMatched: map[string]uint32{
+				"petest.com":  uint32(4),
+				"pe":  uint32(6),
+				"petest":  uint32(7),
+
+			},
+		},
 	}
 
 	for _, useCase := range useCases {
 		node := newValueNode([]byte(""), 0)
 		for i, keyword := range useCase.keywords {
-			node.add(newValueNode([]byte(keyword), uint32(i+1)), nil)
+			node.add(newValueNode([]byte(keyword), uint32(i+1)), func(prev uint32) uint32 {
+				return prev
+			})
 		}
 		var actualMatched = make(map[string]uint32)
 		actualHasMatched := node.match([]byte(useCase.input), 0, func(key []byte, valueIndex uint32) bool {

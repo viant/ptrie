@@ -18,6 +18,7 @@ func (n *Nodes) add(node *Node, merger merger) {
 	sharedNode := (*n)[index]
 	if bytes.HasPrefix(node.Prefix, sharedNode.Prefix) { //new: abcd, shared: abc
 		sharedLen := len(sharedNode.Prefix)
+
 		if len(sharedNode.Prefix) == len(node.Prefix) { //override
 			if merger != nil && node.isValueType() && sharedNode.isValueType() {
 				node.ValueIndex = merger(sharedNode.ValueIndex)
@@ -26,7 +27,9 @@ func (n *Nodes) add(node *Node, merger merger) {
 				if !node.isEdgeType() {
 					node.makeEdge()
 				}
-				node.Nodes = append(node.Nodes, sharedNode.Nodes...)
+				for j := range sharedNode.Nodes {
+					node.add(sharedNode.Nodes[j], nil)
+				}
 			}
 			(*n)[index] = node
 			return
