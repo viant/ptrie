@@ -160,3 +160,22 @@ Benchmark_HamletBruteForceLong-8    	   10000	    226836 ns/op
 Benchmark_HamletTrieLong-8          	   50000	     39329 ns/op
 ```
 
+##### Code coverage
+
+[![GoCover](https://gocover.io/github.com/viant/ptrie)](https://gocover.io/github.com/viant/ptrie)
+
+
+<a name="License"></a>
+## License
+
+The source code is made available under the terms of the Apache License, Version 2, as stated in the file `LICENSE`.
+
+Individual files may be made available under their own specific license,
+all compatible with Apache License, Version 2. Please see individual files for details.
+
+
+<a name="Credits-and-Acknowledgements"></a>
+
+##  Credits and Acknowledgements
+
+**Library Author:** Adrian Witas
