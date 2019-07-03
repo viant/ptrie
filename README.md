@@ -27,6 +27,7 @@ Unlike regular trees (where whole keys are from their beginning up to the point 
 
 
 Prefix tree has the following application:
+
  - text document searching
  - rule based matching
  - constructing associative arrays for string keys
@@ -34,13 +35,13 @@ Prefix tree has the following application:
  
 Character comparision complexity:
 
-Brute Force: O(d n k)
-Prefix Trie: O(d log(k))
+* **Brute Force:** _O(d n k)_
+* **Prefix Trie**: _O(d log(k))_
 
 Where
-d: number of characters in document
-n: number of keywords
-k: average keyword length
+- d: number of characters in document
+- n: number of keywords
+- k: average keyword length
 
 
 ### Usage
