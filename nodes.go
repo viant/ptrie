@@ -37,24 +37,24 @@ func (n *Nodes) add(node *Node, merger merger) {
 		node.Prefix = node.Prefix[sharedLen:]
 		sharedNode.add(node, merger)
 		return
-	} else {
-
-		// find common Prefix and merge into new edge node//new: abz, shared: abc
-		sharedPrefixIndex := Bytes(sharedNode.Prefix).LastSharedIndex(node.Prefix)
-		sharedNode.Prefix = sharedNode.Prefix[sharedPrefixIndex+1:]
-		nodePrefix := node.Prefix[sharedPrefixIndex+1:]
-		if len(nodePrefix) == 0 {
-			node.add(sharedNode, nil)
-			(*n)[index] = node
-			return
-		}
-
-		edge := &Node{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: Nodes{}}
-		edge.add(sharedNode, nil)
-		node.Prefix = node.Prefix[sharedPrefixIndex+1:]
-		edge.add(node, nil)
-		(*n)[index] = edge
 	}
+
+	// find common Prefix and merge into new edge node//new: abz, shared: abc
+	sharedPrefixIndex := Bytes(sharedNode.Prefix).LastSharedIndex(node.Prefix)
+	sharedNode.Prefix = sharedNode.Prefix[sharedPrefixIndex+1:]
+	nodePrefix := node.Prefix[sharedPrefixIndex+1:]
+	if len(nodePrefix) == 0 {
+		node.add(sharedNode, nil)
+		(*n)[index] = node
+		return
+	}
+
+	edge := &Node{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: Nodes{}}
+	edge.add(sharedNode, nil)
+	node.Prefix = node.Prefix[sharedPrefixIndex+1:]
+	edge.add(node, nil)
+	(*n)[index] = edge
+
 }
 
 //IndexOf returns index of expectMatched byte or -1
@@ -77,6 +77,6 @@ loop:
 	return -1
 }
 
-func (a Nodes) Len() int           { return len(a) }
-func (a Nodes) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a Nodes) Less(i, j int) bool { return a[i].Prefix[0] < a[j].Prefix[0] }
+func (n Nodes) Len() int           { return len(n) }
+func (n Nodes) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
+func (n Nodes) Less(i, j int) bool { return n[i].Prefix[0] < n[j].Prefix[0] }

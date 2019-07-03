@@ -118,9 +118,6 @@ func TestNode_match(t *testing.T) {
 			},
 		},
 
-
-
-
 		{
 			description:      "exact match",
 			keywords:         []string{"abc", "zyx", "mln", "abcd", "abcdex"},
@@ -191,8 +188,8 @@ func TestNode_match(t *testing.T) {
 			},
 		},
 		{
-			description:      "mult level amtch",
-			keywords:         []string{"petest.com.br",
+			description: "mult level amtch",
+			keywords: []string{"petest.com.br",
 				"petest.com¬†",
 				"petest.com,¬†",
 				"petest.com",
@@ -207,10 +204,9 @@ func TestNode_match(t *testing.T) {
 			expectHasMatched: true,
 			matchAll:         true,
 			expectMatched: map[string]uint32{
-				"petest.com":  uint32(4),
-				"pe":  uint32(6),
-				"petest":  uint32(7),
-
+				"petest.com": uint32(4),
+				"pe":         uint32(6),
+				"petest":     uint32(7),
 			},
 		},
 	}

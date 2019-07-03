@@ -542,5 +542,3 @@ func benchmarkBruteForce(b *testing.B, useCase *perfCase) {
 		}
 	}
 }
-
-

@@ -8,9 +8,11 @@ import (
 )
 
 const (
+	//NodeTypeValue value type
 	NodeTypeValue = uint8(2)
-	NodeTypeEdge  = uint8(4)
-	controlByte   = uint8(0x3f)
+	//NodeTypeEdge edge type
+	NodeTypeEdge = uint8(4)
+	controlByte  = uint8(0x3f)
 )
 
 //Node represents a node

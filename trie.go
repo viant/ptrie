@@ -9,15 +9,16 @@ import (
 	"sync"
 )
 
-//Merger
+//Merger represents node value merger
 type Merger func(previous, next interface{}) (merged interface{})
 
-//onMatch represents matching input handler, return value instruct trie to continue search
+//OnMatch represents matching input handler, return value instruct trie to continue search
 type OnMatch func(key []byte, value interface{}) bool
 
 //Visitor represents value node visitor handler
 type Visitor func(key []byte, value interface{}) bool
 
+//Trie represents prefix tree interface
 type Trie interface {
 	Put(key []byte, value interface{}) error
 
