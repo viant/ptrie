@@ -46,6 +46,26 @@ Where
 
 ### Usage
 
+
+```go
+
+    trie := ptrie.New()
+    for key, value := pairs {
+        if err = trie.Put(key, value);err != nil {
+            log.Fatal(err)
+         }
+    }
+    //...
+    has := trie.Has(key)
+    value, has := trie.Get(key)
+    //...
+    matched := trie.MatchAll(input,  func(key []byte, value interface{}) bool {
+        fmt.Printf("matched: key: %s, value %v\n", key, value)
+        return true 
+    })
+    
+```
+
 1. Building
 
 
