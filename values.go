@@ -38,7 +38,6 @@ func (v *values) useType(Type reflect.Type) {
 }
 
 func (v *values) put(value interface{}) (uint32, error) {
-	v.RLock()
 	key := value
 	switch val := value.(type) {
 	case []byte:
@@ -51,6 +50,7 @@ func (v *values) put(value interface{}) (uint32, error) {
 		}
 		key = keyProvider.Key()
 	}
+	v.RLock()
 	result, ok := v.registry[key]
 	v.RUnlock()
 	if ok {
