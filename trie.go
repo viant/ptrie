@@ -39,7 +39,11 @@ type Trie interface {
 
 	UseType(vType reflect.Type)
 
+	//Decode decodes concurrently trie nodes and values
 	Decode(reader io.Reader) error
+
+	//DecodeSequentially decode sequentially trie nodes and values
+	DecodeSequentially(reader io.Reader) error
 
 	Encode(writer io.Writer) error
 
@@ -136,7 +140,13 @@ func (t *trie) decodeTrie(root *Node, reader io.Reader, err *error, waitGroup *s
 	}
 }
 
+
 func (t *trie) Decode(reader io.Reader) error {
+	return t.decodeConcurrently(reader)
+}
+
+
+func (t *trie) decodeConcurrently(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(2)
 	trieLength := uint64(0)
@@ -159,6 +169,25 @@ func (t *trie) Decode(reader io.Reader) error {
 		return err
 	}
 	go t.decodeValues(bytes.NewReader(dataReader), &err, waitGroup)
+	waitGroup.Wait()
+	return err
+}
+
+
+func (t * trie) DecodeSequentially(reader io.Reader) error {
+	waitGroup := &sync.WaitGroup{}
+	waitGroup.Add(2)
+	trieLength := uint64(0)
+	bset := uint64(0)
+	err := binary.Read(reader, binary.LittleEndian, &bset)
+	if err == nil {
+		t.bset = Bit64Set(bset)
+		if err = binary.Read(reader, binary.LittleEndian, &trieLength); err != nil {
+			return err
+		}
+	}
+	t.decodeTrie(t.root, reader, &err, waitGroup)
+	t.decodeValues(reader, &err, waitGroup)
 	waitGroup.Wait()
 	return err
 }

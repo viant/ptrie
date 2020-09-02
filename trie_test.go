@@ -276,6 +276,73 @@ func TestTrie_MatchAllWithDecodedTrie(t *testing.T) {
 	}
 }
 
+
+
+func TestTrie_MatchAllWithDecodedSequentiallyTrie(t *testing.T) {
+	useCases := []struct {
+		description     string
+		keywords        map[string]interface{}
+		matchedKeywords map[string]interface{}
+		testMultiMatch  bool
+		input           string
+	}{
+		{
+			description: "multi match",
+			keywords: map[string]interface{}{
+				"abcdef":   1,
+				"abcdefgh": 2,
+				"abc":      3,
+				"bar":      4,
+				"bc":       10,
+				"fo":       11,
+				"foo":      12,
+				"a":        5,
+			},
+			testMultiMatch: true,
+			matchedKeywords: map[string]interface{}{
+				"abc": 3,
+				"a":   5,
+				"bc":  10,
+				"fo":  11,
+				"foo": 12,
+			},
+			input: "abc is foo",
+		},
+	}
+
+	for i := range useCases {
+		useCase := useCases[i]
+		trie := New()
+		for k, v := range useCase.keywords {
+			_ = trie.Put([]byte(k), v)
+		}
+
+		readWriter := new(bytes.Buffer)
+		err := trie.Encode(readWriter)
+		if !assert.Nil(t, err, useCase.description) {
+			continue
+		}
+		trie = New()
+		trie.UseType(reflect.TypeOf(1))
+		err = trie.DecodeSequentially(readWriter)
+		if !assert.Nil(t, err, useCase.description) {
+			continue
+		}
+
+		actualMatch := map[string]interface{}{}
+		onMatch := func(key []byte, value interface{}) bool {
+			actualMatch[string(key)] = value
+			return useCase.testMultiMatch
+		}
+		hasMatch := trie.MatchAll([]byte(useCase.input), onMatch)
+		assert.Equal(t, len(useCase.matchedKeywords) > 0, hasMatch, useCase.description)
+		if len(useCase.matchedKeywords) > 0 {
+			assertly.AssertValues(t, useCase.matchedKeywords, actualMatch, useCase.description)
+		}
+	}
+}
+
+
 func TestTrie_Walk(t *testing.T) {
 	useCases := []struct {
 		description string
