@@ -115,7 +115,7 @@ Where
 
 ```
 
-3. Lookup
+4. Lookup
 
 ```go
 
@@ -124,7 +124,7 @@ Where
 
 ```
 
-3. MatchPrefix
+5. MatchPrefix
 
 ```go
 
@@ -138,7 +138,7 @@ Where
 
 ```
 
-3. MatchAll
+6. MatchAll
 
 ```go
 
