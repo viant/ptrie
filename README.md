@@ -50,8 +50,8 @@ Where
 ```go
 
     trie := ptrie.New()
-    for key, value := pairs {
-        if err = trie.Put(key, value);err != nil {
+    for key, value := range pairs {
+        if err = trie.Put(key, value); err != nil {
             log.Fatal(err)
          }
     }
@@ -73,14 +73,14 @@ Where
 
     trie := ptrie.New()
     
-    for key, value := pairs {
-         if err = trie.Put(key, value);err != nil {
+    for key, value := range pairs {
+         if err = trie.Put(key, value); err != nil {
          	log.Fatal(err)
          }
     }
     
     writer := new(bytes.Buffer)
-	if err := trie.Encode(writer);err != nil {
+	if err := trie.Encode(writer); err != nil {
 		log.Fatal(err)
 	}
 	encoded := write.Bytes()
@@ -98,7 +98,7 @@ Where
 
     trie := ptrie.New()
     trie.UseType(reflect.TypeOf(v))
-    if err := trie.Decode(reader);err != nil {
+    if err := trie.Decode(reader); err != nil {
     	log.Fatal(err)
     }
 
