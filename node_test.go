@@ -2,6 +2,7 @@ package ptrie
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/viant/assertly"
 	"github.com/viant/toolbox"
@@ -9,6 +10,45 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestNode_LoadNode(t *testing.T) {
+	useCases := []struct {
+		description string
+		keywords    []string
+	}{
+		{
+			description: "basic_encode",
+			keywords:    []string{"abc", "zyx", "mln", "abcd", "abz"},
+		},
+		{
+			description: "prefix_encode",
+			keywords:    []string{"abc", "zyx", "abcd"},
+		},
+		{
+			description: "edge_encode",
+			keywords:    []string{"abc", "ac", "zyx"},
+		},
+	}
+
+	for _, useCase := range useCases {
+		node := newValueNode([]byte("/"), 0)
+		for i, keyword := range useCase.keywords {
+			node.add(newValueNode([]byte(keyword), uint32(i+1)), nil)
+		}
+		data := node.Data()
+
+		cloned := &Node{}
+		cloned.LoadNode(data)
+		assert.True(t, node.Equals(cloned))
+		if !assertly.AssertValues(t, node, cloned, useCase.description) {
+			_ = toolbox.DumpIndent(node, true)
+			fmt.Println("CLONE BEGIN")
+			_ = toolbox.DumpIndent(cloned, true)
+			fmt.Println("CLONE END")
+		}
+	}
+
+}
 
 func TestNode_Decode(t *testing.T) {
 	useCases := []struct {

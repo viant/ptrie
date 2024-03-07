@@ -276,8 +276,6 @@ func TestTrie_MatchAllWithDecodedTrie(t *testing.T) {
 	}
 }
 
-
-
 func TestTrie_MatchAllWithDecodedSequentiallyTrie(t *testing.T) {
 	useCases := []struct {
 		description     string
@@ -341,7 +339,6 @@ func TestTrie_MatchAllWithDecodedSequentiallyTrie(t *testing.T) {
 		}
 	}
 }
-
 
 func TestTrie_Walk(t *testing.T) {
 	useCases := []struct {
@@ -415,6 +412,46 @@ func TestTrie_Decode(t *testing.T) {
 		cloned.UseType(reflect.TypeOf(uint32(0)))
 
 		err = cloned.Decode(bytes.NewReader(writer.Bytes()))
+		if !assert.Nil(t, err, useCase.description) {
+			continue
+		}
+		actual := trieToMap(cloned)
+		expect := trieToMap(trie)
+		assert.EqualValues(t, expect, actual, useCase.description)
+	}
+}
+func TestTrie_Read(t *testing.T) {
+	useCases := []struct {
+		description string
+		keywords    []string
+	}{
+		{
+			description: "basic_write",
+			keywords:    []string{"abc", "zyx", "mln", "a"},
+		},
+		{
+			description: "prefix_write",
+			keywords:    []string{"abc", "zyx", "abcd"},
+		},
+		{
+			description: "edge_write",
+			keywords:    []string{"abc", "ac", "zyx"},
+		},
+	}
+
+	for _, useCase := range useCases {
+		trie := New()
+		for i, keyword := range useCase.keywords {
+			_ = trie.Put([]byte(keyword), uint32(i+1))
+		}
+		writer := new(bytes.Buffer)
+		err := trie.Write(writer)
+		assert.Nil(t, err, useCase.description)
+
+		cloned := New()
+		cloned.UseType(reflect.TypeOf(uint32(0)))
+
+		err = cloned.Read(bytes.NewReader(writer.Bytes()))
 		if !assert.Nil(t, err, useCase.description) {
 			continue
 		}

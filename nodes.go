@@ -5,17 +5,17 @@ import (
 	"sort"
 )
 
-//Nodes represents node slice
-type Nodes []*Node
+// Nodes represents node slice
+type Nodes []Node
 
 func (n *Nodes) add(node *Node, merger merger) {
 	index := n.IndexOf(node.Prefix[0])
 	if index == -1 {
-		*n = append(*n, node)
+		*n = append(*n, *node)
 		sort.Sort(*n)
 		return
 	}
-	sharedNode := (*n)[index]
+	sharedNode := &(*n)[index]
 	if bytes.HasPrefix(node.Prefix, sharedNode.Prefix) { //new: abcd, shared: abc
 		sharedLen := len(sharedNode.Prefix)
 
@@ -28,10 +28,10 @@ func (n *Nodes) add(node *Node, merger merger) {
 					node.makeEdge()
 				}
 				for j := range sharedNode.Nodes {
-					node.add(sharedNode.Nodes[j], nil)
+					node.add(&sharedNode.Nodes[j], nil)
 				}
 			}
-			(*n)[index] = node
+			(*n)[index] = *node
 			return
 		}
 		node.Prefix = node.Prefix[sharedLen:]
@@ -45,11 +45,11 @@ func (n *Nodes) add(node *Node, merger merger) {
 	nodePrefix := node.Prefix[sharedPrefixIndex+1:]
 	if len(nodePrefix) == 0 {
 		node.add(sharedNode, nil)
-		(*n)[index] = node
+		(*n)[index] = *node
 		return
 	}
 
-	edge := &Node{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: Nodes{}}
+	edge := Node{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: Nodes{}}
 	edge.add(sharedNode, nil)
 	node.Prefix = node.Prefix[sharedPrefixIndex+1:]
 	edge.add(node, nil)
@@ -57,7 +57,7 @@ func (n *Nodes) add(node *Node, merger merger) {
 
 }
 
-//IndexOf returns index of expectMatched byte or -1
+// IndexOf returns index of expectMatched byte or -1
 func (n Nodes) IndexOf(b byte) int {
 	lowerBoundIndex := 0
 	upperBoundIndex := len(n) - 1

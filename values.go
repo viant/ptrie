@@ -9,17 +9,17 @@ import (
 	"sync"
 )
 
-//KeyProvider represents entity key provider
+// KeyProvider represents entity key provider
 type KeyProvider interface {
 	Key() interface{}
 }
 
-//Decoder decoder
+// Decoder decoder
 type Decoder interface {
 	Decode(reader io.Reader) error
 }
 
-//Encoder encoder
+// Encoder encoder
 type Encoder interface {
 	Encode(writer io.Writer) error
 }

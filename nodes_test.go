@@ -149,7 +149,7 @@ func TestNodes_IndexOf(t *testing.T) {
 	for _, useCase := range useCases {
 		nodes := Nodes{}
 		for i := 0; i < len(useCase.prefixes); i++ {
-			nodes = append(nodes, &Node{Prefix: []byte(string(useCase.prefixes[i]))})
+			nodes = append(nodes, Node{Prefix: []byte(string(useCase.prefixes[i]))})
 		}
 		actualIndex := nodes.IndexOf(useCase.search)
 		assert.Equal(t, useCase.expectIndex, actualIndex, useCase.description)

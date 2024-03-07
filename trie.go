@@ -3,22 +3,24 @@ package ptrie
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
 	"sync"
+	"time"
 )
 
-//Merger represents node value merger
+// Merger represents node value merger
 type Merger func(previous, next interface{}) (merged interface{})
 
-//OnMatch represents matching input handler, return value instruct trie to continue search
+// OnMatch represents matching input handler, return value instruct trie to continue search
 type OnMatch func(key []byte, value interface{}) bool
 
-//Visitor represents value node visitor handler
+// Visitor represents value node visitor handler
 type Visitor func(key []byte, value interface{}) bool
 
-//Trie represents prefix tree interface
+// Trie represents prefix tree interface
 type Trie interface {
 	Put(key []byte, value interface{}) error
 
@@ -48,9 +50,16 @@ type Trie interface {
 	Encode(writer io.Writer) error
 
 	ValueCount() int
+
+	Write(writer io.Writer) error
+
+	Read(reader io.Reader) error
+
+	Root() *Node
 }
 
 type trie struct {
+	data   []byte
 	values *values
 	root   *Node
 	bset   Bit64Set
@@ -140,11 +149,9 @@ func (t *trie) decodeTrie(root *Node, reader io.Reader, err *error, waitGroup *s
 	}
 }
 
-
 func (t *trie) Decode(reader io.Reader) error {
 	return t.decodeConcurrently(reader)
 }
-
 
 func (t *trie) decodeConcurrently(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
@@ -173,8 +180,7 @@ func (t *trie) decodeConcurrently(reader io.Reader) error {
 	return err
 }
 
-
-func (t * trie) DecodeSequentially(reader io.Reader) error {
+func (t *trie) DecodeSequentially(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(2)
 	trieLength := uint64(0)
@@ -186,9 +192,31 @@ func (t * trie) DecodeSequentially(reader io.Reader) error {
 			return err
 		}
 	}
+	//s := time.Now()
 	t.decodeTrie(t.root, reader, &err, waitGroup)
+
 	t.decodeValues(reader, &err, waitGroup)
 	waitGroup.Wait()
+
+	//orig := t.root
+	//fmt.Printf("elapsed tree v0: %s %v\n", time.Since(s), len(t.root.Nodes))
+	//
+	//count := 0
+	//for _, n := range t.root.Nodes {
+	//	count += len(n.Nodes)
+	//}
+	//fmt.Println("Node count:", count)
+	//data := t.root.Data()
+	//s = time.Now()
+	//t.root = &Node{}
+	//t.root.LoadNode(data)
+	//
+	//fmt.Printf("elapsed tree v1: %s %v %v\n", time.Since(s), len(t.root.Nodes), len(data))
+	//count = 0
+	//s = time.Now()
+	//
+	//theSame := orig.Equals(t.root)
+	//fmt.Printf("theSame count: %v %s\n", theSame, time.Since(s))
 	return err
 }
 
@@ -217,6 +245,51 @@ func (t *trie) Encode(writer io.Writer) error {
 	return err
 }
 
+func (t *trie) Write(writer io.Writer) error {
+	err := binary.Write(writer, binary.LittleEndian, uint64(t.bset))
+	if err == nil {
+		nodesData := t.root.Data()
+		trieLength := len(nodesData)
+		if err == nil {
+			if err = binary.Write(writer, binary.LittleEndian, uint64(trieLength)); err == nil {
+				if _, err = io.Copy(writer, bytes.NewReader(nodesData)); err != nil {
+					return err
+				}
+			}
+			return t.encodeValues(writer)
+		}
+	}
+	return err
+}
+
+func (t *trie) Root() *Node {
+	return t.root
+}
+
+func (t *trie) Read(reader io.Reader) error {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	reader = bytes.NewReader(data)
+	bset := uint64(0)
+	err = binary.Read(reader, binary.LittleEndian, &bset)
+	if err == nil {
+		t.bset = Bit64Set(bset)
+		trieLength := uint64(0)
+		if err = binary.Read(reader, binary.LittleEndian, &trieLength); err == nil {
+			data = data[16:]
+			t.data = data
+			t.root = &Node{}
+			s := time.Now()
+			t.root.LoadNode(data[:trieLength])
+			fmt.Printf("load new index elapsed %s\n", time.Since(s))
+			reader = bytes.NewReader(data[trieLength:])
+			return t.values.Decode(reader)
+		}
+	}
+	return nil
+}
 func (t *trie) MatchAll(input []byte, handler OnMatch) bool {
 	toContinue := true
 	matched := false
@@ -245,10 +318,11 @@ func (t *trie) match(root *Node, input []byte, handler OnMatch) bool {
 	})
 }
 
-//New create new prefix trie
+// New create new prefix trie
 func New() Trie {
+	node := newValueNode([]byte{}, 0)
 	return &trie{
 		values: newValues(),
-		root:   newValueNode([]byte{}, 0),
+		root:   node,
 	}
 }
