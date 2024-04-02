@@ -6,9 +6,9 @@ import (
 )
 
 // Nodes represents node slice
-type Nodes []Node
+type Nodes[T any] []Node[T]
 
-func (n *Nodes) add(node *Node, merger merger) {
+func (n *Nodes[T]) add(node *Node[T], merger merger) {
 	index := n.IndexOf(node.Prefix[0])
 	if index == -1 {
 		*n = append(*n, *node)
@@ -49,7 +49,7 @@ func (n *Nodes) add(node *Node, merger merger) {
 		return
 	}
 
-	edge := Node{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: Nodes{}}
+	edge := Node[T]{Type: NodeTypeEdge, Prefix: node.Prefix[:sharedPrefixIndex+1], Nodes: Nodes[T]{}}
 	edge.add(sharedNode, nil)
 	node.Prefix = node.Prefix[sharedPrefixIndex+1:]
 	edge.add(node, nil)
@@ -58,7 +58,7 @@ func (n *Nodes) add(node *Node, merger merger) {
 }
 
 // IndexOf returns index of expectMatched byte or -1
-func (n Nodes) IndexOf(b byte) int {
+func (n Nodes[T]) IndexOf(b byte) int {
 	lowerBoundIndex := 0
 	upperBoundIndex := len(n) - 1
 loop:
@@ -77,6 +77,6 @@ loop:
 	return -1
 }
 
-func (n Nodes) Len() int           { return len(n) }
-func (n Nodes) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
-func (n Nodes) Less(i, j int) bool { return n[i].Prefix[0] < n[j].Prefix[0] }
+func (n Nodes[T]) Len() int           { return len(n) }
+func (n Nodes[T]) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
+func (n Nodes[T]) Less(i, j int) bool { return n[i].Prefix[0] < n[j].Prefix[0] }

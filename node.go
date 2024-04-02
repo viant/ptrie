@@ -26,17 +26,17 @@ func (r *region) fragment(data []byte, ofSize uint32) []byte {
 }
 
 // Node represents a node
-type Node struct {
+type Node[T any] struct {
 	bset         Bit64Set
 	Type         uint8
 	ValueIndex   uint32
 	prefixRegion region
 	nodesRegion  region
 	Prefix       []byte //24
-	Nodes               //24
+	Nodes[T]            //24
 }
 
-func (n *Node) Equals(d *Node) bool {
+func (n *Node[T]) Equals(d *Node[T]) bool {
 
 	if !bytes.Equal(n.Prefix, d.Prefix) {
 		fmt.Printf("prefix diff: %s - %s", n.Prefix, d.Prefix)
@@ -63,7 +63,7 @@ func (n *Node) Equals(d *Node) bool {
 	return true
 
 }
-func (n *Node) Size() int {
+func (n *Node[T]) Size() int {
 	ret := int(unsafe.Sizeof(*n))
 	ret += len(n.Prefix) //of byte size
 	for _, n := range n.Nodes {
@@ -72,13 +72,13 @@ func (n *Node) Size() int {
 	return ret
 }
 
-func (n *Node) Data() []byte {
+func (n *Node[T]) Data() []byte {
 	data := make([]byte, n.Size())
 	n.write(data, 0, true)
 	return data
 }
 
-func (n *Node) write(data []byte, offset int, includeSelf bool) int {
+func (n *Node[T]) write(data []byte, offset int, includeSelf bool) int {
 
 	initial := offset
 
@@ -93,7 +93,7 @@ func (n *Node) write(data []byte, offset int, includeSelf bool) int {
 	}
 
 	var prefixes = make([][]byte, len(n.Nodes))
-	var nodes = make([]Nodes, len(n.Nodes))
+	var nodes = make([]Nodes[T], len(n.Nodes))
 	for i := range n.Nodes {
 		node := &n.Nodes[i]
 		prefixes[i] = node.Prefix
@@ -127,34 +127,26 @@ func (n *Node) write(data []byte, offset int, includeSelf bool) int {
 	return offset
 }
 
-func (n *Node) Read(data *[]byte) {
+func (n *Node[T]) Read(data *[]byte) {
 
 	if n.prefixRegion.size > 0 {
-
-		//fragment := n.prefixRegion.fragment(data, 1)
 		r := n.prefixRegion
 		prefix := unsafe.Slice((*byte)(unsafe.Pointer(&(*data)[r.offset : r.offset+r.size*1][0])), int(n.prefixRegion.size))
 		n.Prefix = prefix
-		//make([]byte, len(prefix))
-		//copy(n.Prefix, prefix)
 	}
 
 	if n.nodesRegion.size > 0 {
-
-		//fragment := n.nodesRegion.fragment(data, uint32(unsafe.Sizeof(*n)))
 		r := n.nodesRegion
-		nodes := unsafe.Slice((*Node)(unsafe.Pointer(&(*data)[r.offset : r.offset+r.size*uint32(unsafe.Sizeof(*n))][0])), int(n.nodesRegion.size))
+		nodes := unsafe.Slice((*Node[T])(unsafe.Pointer(&(*data)[r.offset : r.offset+r.size*uint32(unsafe.Sizeof(*n))][0])), int(n.nodesRegion.size))
 		for i := range nodes {
 			node := &nodes[i]
 			node.Read(data)
 		}
 		n.Nodes = nodes
-		//make([]Node, len(nodes))
-		//copy(n.Nodes, nodes)
 	}
 }
 
-func (n *Node) LoadNode(data []byte) {
+func (n *Node[T]) LoadNode(data []byte) {
 	dest := unsafe.Slice((*byte)(unsafe.Pointer(n)), unsafe.Sizeof(*n))
 	copy(dest, data)
 	n.Read(&data)
@@ -162,28 +154,28 @@ func (n *Node) LoadNode(data []byte) {
 
 type merger func(prev uint32) uint32
 
-func (n *Node) isValueType() bool {
+func (n *Node[T]) isValueType() bool {
 	return n.Type&NodeTypeValue == NodeTypeValue
 }
 
-func (n *Node) isEdgeType() bool {
+func (n *Node[T]) isEdgeType() bool {
 	return n.Type&NodeTypeEdge == NodeTypeEdge
 }
 
-func (n *Node) makeEdge() {
+func (n *Node[T]) makeEdge() {
 	n.Type = n.Type | NodeTypeEdge
 }
 
-func (n *Node) add(node *Node, merger merger) {
+func (n *Node[T]) add(node *Node[T], merger merger) {
 	if len(n.Nodes) == 0 {
-		n.Nodes = make([]Node, 0)
+		n.Nodes = make([]Node[T], 0)
 		n.makeEdge()
 	}
 	n.bset = n.bset.Put(node.Prefix[0])
 	n.Nodes.add(node, merger)
 }
 
-func (n *Node) walk(parent []byte, handler func(key []byte, valueIndex uint32)) {
+func (n *Node[T]) walk(parent []byte, handler func(key []byte, valueIndex uint32)) {
 	prefix := append(parent, n.Prefix...)
 	if n.isValueType() {
 		handler(prefix, n.ValueIndex)
@@ -196,7 +188,7 @@ func (n *Node) walk(parent []byte, handler func(key []byte, valueIndex uint32)) 
 	}
 }
 
-func (n *Node) matchNodes(input []byte, offset int, handler func(key []byte, valueIndex uint32) bool) bool {
+func (n *Node[T]) matchNodes(input []byte, offset int, handler func(key []byte, valueIndex uint32) bool) bool {
 	hasMatch := false
 	if n.isEdgeType() {
 		if !n.bset.IsSet(input[offset]) {
@@ -213,7 +205,7 @@ func (n *Node) matchNodes(input []byte, offset int, handler func(key []byte, val
 	return hasMatch
 }
 
-func (n *Node) match(input []byte, offset int, handler func(key []byte, valueIndex uint32) bool) bool {
+func (n *Node[T]) match(input []byte, offset int, handler func(key []byte, valueIndex uint32) bool) bool {
 	if offset >= len(input) {
 		return false
 	}
@@ -243,7 +235,7 @@ func (n *Node) match(input []byte, offset int, handler func(key []byte, valueInd
 }
 
 // Encode encode node
-func (n *Node) Encode(writer io.Writer) error {
+func (n *Node[T]) Encode(writer io.Writer) error {
 	var err error
 	if err = binary.Write(writer, binary.LittleEndian, controlByte); err == nil {
 		if err = binary.Write(writer, binary.LittleEndian, n.Type); err == nil {
@@ -262,7 +254,7 @@ func (n *Node) Encode(writer io.Writer) error {
 	return err
 }
 
-func (n *Node) size() int {
+func (n *Node[T]) size() int {
 	result := 2 + 4 + len(n.Prefix)
 	if n.isValueType() {
 		result += 4
@@ -276,7 +268,7 @@ func (n *Node) size() int {
 	return result
 }
 
-func (n *Node) encodeNodes(writer io.Writer) error {
+func (n *Node[T]) encodeNodes(writer io.Writer) error {
 	var err error
 	if !n.isEdgeType() {
 		return err
@@ -295,7 +287,7 @@ func (n *Node) encodeNodes(writer io.Writer) error {
 }
 
 // Decode decode node
-func (n *Node) Decode(reader io.Reader) error {
+func (n *Node[T]) Decode(reader io.Reader) error {
 	var err error
 	var control uint8
 	if err = binary.Read(reader, binary.LittleEndian, &control); err == nil {
@@ -321,7 +313,7 @@ func (n *Node) Decode(reader io.Reader) error {
 	return err
 }
 
-func (n *Node) decodeNodes(reader io.Reader) error {
+func (n *Node[T]) decodeNodes(reader io.Reader) error {
 	var err error
 	if !n.isEdgeType() {
 		return err
@@ -332,7 +324,7 @@ func (n *Node) decodeNodes(reader io.Reader) error {
 	if err = binary.Read(reader, binary.LittleEndian, &bset); err == nil {
 		n.bset = Bit64Set(bset)
 		if err = binary.Read(reader, binary.LittleEndian, &nodeLength); err == nil {
-			n.Nodes = make([]Node, nodeLength)
+			n.Nodes = make([]Node[T], nodeLength)
 			for i := range n.Nodes {
 				if err = n.Nodes[i].Decode(reader); err != nil {
 					return err
@@ -343,8 +335,8 @@ func (n *Node) decodeNodes(reader io.Reader) error {
 	return err
 }
 
-func newValueNode(prefix []byte, valueIndex uint32) *Node {
-	node := &Node{
+func newValueNode[T any](prefix []byte, valueIndex uint32) *Node[T] {
+	node := &Node[T]{
 		Prefix:     prefix,
 		ValueIndex: valueIndex,
 	}

@@ -12,32 +12,32 @@ import (
 )
 
 // Merger represents node value merger
-type Merger func(previous, next interface{}) (merged interface{})
+type Merger[T any] func(previous, next T) (merged T)
 
 // OnMatch represents matching input handler, return value instruct trie to continue search
-type OnMatch func(key []byte, value interface{}) bool
+type OnMatch[T any] func(key []byte, value T) bool
 
 // Visitor represents value node visitor handler
-type Visitor func(key []byte, value interface{}) bool
+type Visitor[T any] func(key []byte, value T) bool
 
 // Trie represents prefix tree interface
-type Trie interface {
-	Put(key []byte, value interface{}) error
+type Trie[T any] interface {
+	Put(key []byte, value T) error
 
-	Merge(key []byte, value interface{}, merger Merger) error
+	Merge(key []byte, value T, merger Merger[T]) error
 
-	Get(key []byte) (interface{}, bool)
+	Get(key []byte) (T, bool)
 
 	Has(key []byte) bool
 
 	//Walk all tries value nodes.
-	Walk(handler Visitor)
+	Walk(handler Visitor[T])
 
 	//MatchPrefix matches input prefix, ie. input: dev.domain.com, would match with trie keys like: dev, dev.domain
-	MatchPrefix(input []byte, handler OnMatch) bool
+	MatchPrefix(input []byte, handler OnMatch[T]) bool
 
 	//MatchAll matches input with any occurrences of tries keys.
-	MatchAll(input []byte, handler OnMatch) bool
+	MatchAll(input []byte, handler OnMatch[T]) bool
 
 	UseType(vType reflect.Type)
 
@@ -55,31 +55,31 @@ type Trie interface {
 
 	Read(reader io.Reader) error
 
-	Root() *Node
+	Root() *Node[T]
 }
 
-type trie struct {
+type trie[T any] struct {
 	data   []byte
-	values *values
-	root   *Node
+	values *values[T]
+	root   *Node[T]
 	bset   Bit64Set
 }
 
-func (t *trie) Put(key []byte, value interface{}) error {
+func (t *trie[T]) Put(key []byte, value T) error {
 	return t.Merge(key, value, nil)
 }
 
-func (t *trie) Merge(key []byte, value interface{}, merger Merger) error {
+func (t *trie[T]) Merge(key []byte, value T, merger Merger[T]) error {
 	return t.merge(t.root, key, value, merger)
 }
 
-func (t *trie) merge(root *Node, key []byte, value interface{}, merger Merger) error {
+func (t *trie[T]) merge(root *Node[T], key []byte, value T, merger Merger[T]) error {
 	t.bset = t.bset.Put(key[0])
 	index, err := t.values.put(value)
 	if err != nil {
 		return err
 	}
-	node := newValueNode(key, index)
+	node := newValueNode[T](key, index)
 	root.add(node, func(prev uint32) uint32 {
 		if merger != nil {
 			prevValue := t.values.value(prev)
@@ -95,10 +95,10 @@ func (t *trie) merge(root *Node, key []byte, value interface{}, merger Merger) e
 	return err
 }
 
-func (t *trie) Get(key []byte) (interface{}, bool) {
-	var result interface{}
+func (t *trie[T]) Get(key []byte) (T, bool) {
+	var result T
 	found := false
-	handler := func(k []byte, value interface{}) bool {
+	handler := func(k []byte, value T) bool {
 		if found = len(key) == len(k); found {
 			result = value
 			return false
@@ -110,50 +110,50 @@ func (t *trie) Get(key []byte) (interface{}, bool) {
 		return handler(key, value)
 	})
 	if !has {
-		return nil, has
+		return result, has
 	}
 	return result, found
 }
 
-func (t *trie) Has(key []byte) bool {
+func (t *trie[T]) Has(key []byte) bool {
 	_, has := t.Get(key)
 	return has
 }
 
-func (t *trie) MatchPrefix(input []byte, handler OnMatch) bool {
+func (t *trie[T]) MatchPrefix(input []byte, handler OnMatch[T]) bool {
 	return t.match(t.root, input, handler)
 }
 
-func (t *trie) Walk(handler Visitor) {
+func (t *trie[T]) Walk(handler Visitor[T]) {
 	t.root.walk([]byte{}, func(key []byte, valueIndex uint32) {
 		value := t.values.value(valueIndex)
 		handler(key, value)
 	})
 }
 
-func (t *trie) UseType(vType reflect.Type) {
+func (t *trie[T]) UseType(vType reflect.Type) {
 	t.values.useType(vType)
 }
 
-func (t *trie) decodeValues(reader io.Reader, err *error, waitGroup *sync.WaitGroup) {
+func (t *trie[T]) decodeValues(reader io.Reader, err *error, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 	if e := t.values.Decode(reader); e != nil {
 		*err = e
 	}
 }
 
-func (t *trie) decodeTrie(root *Node, reader io.Reader, err *error, waitGroup *sync.WaitGroup) {
+func (t *trie[T]) decodeTrie(root *Node[T], reader io.Reader, err *error, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 	if e := root.Decode(reader); e != nil {
 		*err = e
 	}
 }
 
-func (t *trie) Decode(reader io.Reader) error {
+func (t *trie[T]) Decode(reader io.Reader) error {
 	return t.decodeConcurrently(reader)
 }
 
-func (t *trie) decodeConcurrently(reader io.Reader) error {
+func (t *trie[T]) decodeConcurrently(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(2)
 	trieLength := uint64(0)
@@ -180,7 +180,7 @@ func (t *trie) decodeConcurrently(reader io.Reader) error {
 	return err
 }
 
-func (t *trie) DecodeSequentially(reader io.Reader) error {
+func (t *trie[T]) DecodeSequentially(reader io.Reader) error {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(2)
 	trieLength := uint64(0)
@@ -198,41 +198,22 @@ func (t *trie) DecodeSequentially(reader io.Reader) error {
 	t.decodeValues(reader, &err, waitGroup)
 	waitGroup.Wait()
 
-	//orig := t.root
-	//fmt.Printf("elapsed tree v0: %s %v\n", time.Since(s), len(t.root.Nodes))
-	//
-	//count := 0
-	//for _, n := range t.root.Nodes {
-	//	count += len(n.Nodes)
-	//}
-	//fmt.Println("Node count:", count)
-	//data := t.root.Data()
-	//s = time.Now()
-	//t.root = &Node{}
-	//t.root.LoadNode(data)
-	//
-	//fmt.Printf("elapsed tree v1: %s %v %v\n", time.Since(s), len(t.root.Nodes), len(data))
-	//count = 0
-	//s = time.Now()
-	//
-	//theSame := orig.Equals(t.root)
-	//fmt.Printf("theSame count: %v %s\n", theSame, time.Since(s))
 	return err
 }
 
-func (t *trie) encodeTrie(root *Node, writer io.Writer) error {
+func (t *trie[T]) encodeTrie(root *Node[T], writer io.Writer) error {
 	return root.Encode(writer)
 }
 
-func (t *trie) encodeValues(writer io.Writer) error {
+func (t *trie[T]) encodeValues(writer io.Writer) error {
 	return t.values.Encode(writer)
 }
 
-func (t *trie) ValueCount() int {
+func (t *trie[T]) ValueCount() int {
 	return len(t.values.data)
 }
 
-func (t *trie) Encode(writer io.Writer) error {
+func (t *trie[T]) Encode(writer io.Writer) error {
 	trieSize := t.root.size()
 	err := binary.Write(writer, binary.LittleEndian, uint64(t.bset))
 	if err == nil {
@@ -245,7 +226,7 @@ func (t *trie) Encode(writer io.Writer) error {
 	return err
 }
 
-func (t *trie) Write(writer io.Writer) error {
+func (t *trie[T]) Write(writer io.Writer) error {
 	err := binary.Write(writer, binary.LittleEndian, uint64(t.bset))
 	if err == nil {
 		nodesData := t.root.Data()
@@ -262,11 +243,11 @@ func (t *trie) Write(writer io.Writer) error {
 	return err
 }
 
-func (t *trie) Root() *Node {
+func (t *trie[T]) Root() *Node[T] {
 	return t.root
 }
 
-func (t *trie) Read(reader io.Reader) error {
+func (t *trie[T]) Read(reader io.Reader) error {
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return err
@@ -280,7 +261,7 @@ func (t *trie) Read(reader io.Reader) error {
 		if err = binary.Read(reader, binary.LittleEndian, &trieLength); err == nil {
 			data = data[16:]
 			t.data = data
-			t.root = &Node{}
+			t.root = &Node[T]{}
 			s := time.Now()
 			t.root.LoadNode(data[:trieLength])
 			fmt.Printf("load new index elapsed %s\n", time.Since(s))
@@ -290,7 +271,7 @@ func (t *trie) Read(reader io.Reader) error {
 	}
 	return nil
 }
-func (t *trie) MatchAll(input []byte, handler OnMatch) bool {
+func (t *trie[T]) MatchAll(input []byte, handler OnMatch[T]) bool {
 	toContinue := true
 	matched := false
 	for i := 0; i < len(input); i++ {
@@ -298,7 +279,7 @@ func (t *trie) MatchAll(input []byte, handler OnMatch) bool {
 		if t.bset > 0 && !t.bset.IsSet(input[i]) {
 			continue
 		}
-		if hasMatched := t.match(t.root, input[i:], func(key []byte, value interface{}) bool {
+		if hasMatched := t.match(t.root, input[i:], func(key []byte, value T) bool {
 			toContinue = handler(key, value)
 			return toContinue
 		}); hasMatched {
@@ -311,7 +292,7 @@ func (t *trie) MatchAll(input []byte, handler OnMatch) bool {
 	return matched
 }
 
-func (t *trie) match(root *Node, input []byte, handler OnMatch) bool {
+func (t *trie[T]) match(root *Node[T], input []byte, handler OnMatch[T]) bool {
 	return root.match(input, 0, func(key []byte, valueIndex uint32) bool {
 		value := t.values.value(valueIndex)
 		return handler(key, value)
@@ -319,10 +300,10 @@ func (t *trie) match(root *Node, input []byte, handler OnMatch) bool {
 }
 
 // New create new prefix trie
-func New() Trie {
-	node := newValueNode([]byte{}, 0)
-	return &trie{
-		values: newValues(),
+func New[T any]() Trie[T] {
+	node := newValueNode[T]([]byte{}, 0)
+	return &trie[T]{
+		values: newValues[T](),
 		root:   node,
 	}
 }

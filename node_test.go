@@ -31,13 +31,13 @@ func TestNode_LoadNode(t *testing.T) {
 	}
 
 	for _, useCase := range useCases {
-		node := newValueNode([]byte("/"), 0)
+		node := newValueNode[uint32]([]byte("/"), 0)
 		for i, keyword := range useCase.keywords {
-			node.add(newValueNode([]byte(keyword), uint32(i+1)), nil)
+			node.add(newValueNode[uint32]([]byte(keyword), uint32(i+1)), nil)
 		}
 		data := node.Data()
 
-		cloned := &Node{}
+		cloned := &Node[uint32]{}
 		cloned.LoadNode(data)
 		assert.True(t, node.Equals(cloned))
 		if !assertly.AssertValues(t, node, cloned, useCase.description) {
@@ -70,9 +70,9 @@ func TestNode_Decode(t *testing.T) {
 	}
 
 	for _, useCase := range useCases {
-		node := newValueNode([]byte("/"), 0)
+		node := newValueNode[uint32]([]byte("/"), 0)
 		for i, keyword := range useCase.keywords {
-			node.add(newValueNode([]byte(keyword), uint32(i+1)), nil)
+			node.add(newValueNode[uint32]([]byte(keyword), uint32(i+1)), nil)
 		}
 		writer := new(bytes.Buffer)
 		err := node.Encode(writer)
@@ -82,7 +82,7 @@ func TestNode_Decode(t *testing.T) {
 		}
 		assert.EqualValues(t, writer.Len(), node.size(), useCase.description)
 
-		cloned := &Node{}
+		cloned := &Node[uint32]{}
 		err = cloned.Decode(bytes.NewReader(writer.Bytes()))
 		if assert.Nil(t, err, useCase.description) {
 			continue
@@ -96,7 +96,7 @@ func TestNode_Decode(t *testing.T) {
 
 	//test error case
 	reader := strings.NewReader("test is error")
-	node := &Node{}
+	node := &Node[uint32]{}
 	err := node.Decode(reader)
 	assert.NotNil(t, err)
 }
@@ -125,12 +125,12 @@ func TestNode_walk(t *testing.T) {
 	}
 
 	for _, useCase := range useCases {
-		node := newValueNode([]byte(""), 0)
+		node := newValueNode[uint32]([]byte(""), 0)
 		var expect = make(map[string]uint32)
 		var actual = make(map[string]uint32)
 		for i, keyword := range useCase.keywords {
 			expect[string(keyword)] = uint32(i + 1)
-			node.add(newValueNode([]byte(keyword), uint32(i+1)), nil)
+			node.add(newValueNode[uint32]([]byte(keyword), uint32(i+1)), nil)
 		}
 		node.walk([]byte{}, func(key []byte, valueIndex uint32) {
 			actual[string(key)] = valueIndex
@@ -252,9 +252,9 @@ func TestNode_match(t *testing.T) {
 	}
 
 	for _, useCase := range useCases {
-		node := newValueNode([]byte(""), 0)
+		node := newValueNode[uint32]([]byte(""), 0)
 		for i, keyword := range useCase.keywords {
-			node.add(newValueNode([]byte(keyword), uint32(i+1)), func(prev uint32) uint32 {
+			node.add(newValueNode[uint32]([]byte(keyword), uint32(i+1)), func(prev uint32) uint32 {
 				return prev
 			})
 		}
